@@ -4,6 +4,7 @@
 #include "BPMDetector.hpp"
 #include <random>
 #include <algorithm>
+#include <cmath>
 
 using namespace geode::prelude;
 
@@ -31,6 +32,10 @@ void spikes(LevelEditorLayer* editor, float x, float y, int count) {
 }
 void orb(LevelEditorLayer* editor, float x, float y) { put(editor, 35, x, y); }
 void block(LevelEditorLayer* editor, float x, float y) { put(editor, 1, x, y); }
+void platform(LevelEditorLayer* editor, float x, float y, int count) {
+    for (int i = 0; i < count; ++i)
+        block(editor, x + 30.f * static_cast<float>(i), y);
+}
 }
 
 class $modify(DLGenEditorUI, EditorUI) {
@@ -63,8 +68,6 @@ class $modify(DLGenEditorUI, EditorUI) {
             FLAlertLayer::create("DLGen", "Open a level with a selected song in the editor first.", "OK")->show();
             return;
         }
-
-        // Resolve and analyze the actual song file selected by this level.
         auto audioFile = editor->m_level->getAudioFileName();
         if (audioFile.empty()) {
             FLAlertLayer::create("DLGen", "Could not find the selected song file. Select/download a song and try again.", "OK")->show();
@@ -84,58 +87,98 @@ class $modify(DLGenEditorUI, EditorUI) {
             return;
         }
 
-        constexpr float startX = 300.f, floorY = 120.f, blockWidth = 30.f;
+        constexpr float startX = 300.f, groundY = 120.f;
         constexpr float unitsPerSecond = 300.f;
         const int duration = getDurationSeconds();
         const int difficulty = getDifficultyRank();
         const float beat = unitsPerSecond * 60.f / bpm;
         const float bar = beat * 4.f;
-        const float songPhaseX = startX + static_cast<float>(timing.firstBeatSeconds) * unitsPerSecond;
+        const float phraseWidth = bar * 2.f;
+        const float phaseX = startX + static_cast<float>(timing.firstBeatSeconds) * unitsPerSecond;
         const float endX = startX + static_cast<float>(duration) * unitsPerSecond;
-
-        for (float x = startX; x < endX; x += blockWidth)
-            block(editor, x, floorY);
 
         std::random_device seed;
         std::mt19937 rng(seed());
-        std::uniform_int_distribution<int> motif(0, 9), offset(0, 2), size(1, 3);
+        std::uniform_int_distribution<int> motif(0, 11);
+        std::uniform_int_distribution<int> smallCount(1, 2);
+        std::uniform_int_distribution<int> platformCount(3, 6);
+        std::uniform_int_distribution<int> height(1, 3);
+        std::uniform_int_distribution<int> rest(0, 3);
         const bool orbs = Mod::get()->getSettingValue<std::string>("orbs") == "Active";
 
-        // Phrases start on the detected beat phase, not a manually entered BPM.
-        for (float barX = songPhaseX + bar; barX < endX - bar; barX += bar) {
-            const int chosen = motif(rng);
-            const float x = barX + beat * static_cast<float>(offset(rng));
-            const int count = size(rng);
-            switch (chosen) {
-                case 0: case 1: spikes(editor, x, floorY, 1); break;
-                case 2: spikes(editor, x, floorY, 2); break;
-                case 3: spikes(editor, x, floorY, count); break;
+        // Leave the game's native ground alone: don't stamp thousands of blocks
+        // across the whole level. Build distinct, beat-quantized phrases instead.
+        int phraseNumber = 0;
+        for (float phraseX = phaseX + phraseWidth; phraseX < endX - phraseWidth;
+             phraseX += phraseWidth, ++phraseNumber) {
+            const int style = motif(rng);
+            const float x = phraseX + beat * static_cast<float>(rest(rng));
+            const float elevatedY = groundY + 30.f * static_cast<float>(height(rng));
+            const int n = platformCount(rng);
+
+            switch (style) {
+                // Ground-based rhythms with different spacing and recovery.
+                case 0: spikes(editor, x, groundY, 1); break;
+                case 1: spikes(editor, x, groundY, 2); break;
+                case 2:
+                    spikes(editor, x, groundY, 1);
+                    spikes(editor, x + beat * 2.f, groundY, 1);
+                    break;
+                case 3:
+                    spikes(editor, x, groundY, smallCount(rng));
+                    if (orbs) orb(editor, x + beat, groundY + 65.f);
+                    break;
+                // Short raised platforms with a beat-matched approach.
                 case 4:
-                    spikes(editor, x, floorY, 1);
-                    if (orbs) orb(editor, x + beat, floorY + 65.f);
+                    platform(editor, x + beat, elevatedY, n);
+                    if (orbs) {
+                        orb(editor, x + beat * 1.5f, elevatedY + 55.f);
+                        orb(editor, x + beat * 2.5f, elevatedY + 55.f);
+                    }
                     break;
                 case 5:
-                    spikes(editor, x, floorY, 1);
-                    spikes(editor, x + beat * 2.f, floorY, 1);
+                    platform(editor, x, groundY + 30.f, 3);
+                    platform(editor, x + beat * 2.f, groundY + 60.f, 3);
                     break;
+                // Staircase motifs: ascending or descending block groups.
                 case 6:
-                    block(editor, x + beat, floorY + 30.f);
-                    if (orbs) orb(editor, x + beat, floorY + 95.f);
+                    for (int i = 0; i < 3; ++i)
+                        platform(editor, x + beat * static_cast<float>(i),
+                                 groundY + 30.f * static_cast<float>(i + 1), 2);
                     break;
                 case 7:
-                    spikes(editor, x + beat, floorY, 2);
-                    if (orbs) orb(editor, x + beat * 2.f, floorY + 65.f);
+                    for (int i = 0; i < 3; ++i)
+                        platform(editor, x + beat * static_cast<float>(i),
+                                 groundY + 60.f - 30.f * static_cast<float>(i), 2);
                     break;
+                // Floating block formations and orb arcs.
                 case 8:
-                    block(editor, x, floorY + 30.f);
-                    block(editor, x + beat, floorY + 30.f);
+                    platform(editor, x + beat, elevatedY, 2);
+                    platform(editor, x + beat * 2.f, elevatedY + 30.f, 2);
+                    platform(editor, x + beat * 3.f, elevatedY, 2);
+                    if (orbs) orb(editor, x + beat * 2.f, elevatedY + 90.f);
                     break;
-                default: break;
+                case 9:
+                    block(editor, x + beat, groundY + 30.f);
+                    block(editor, x + beat * 2.f, groundY + 60.f);
+                    block(editor, x + beat * 3.f, groundY + 30.f);
+                    if (orbs) orb(editor, x + beat * 2.f, groundY + 115.f);
+                    break;
+                // A mixed phrase ending in a safe rest.
+                case 10:
+                    spikes(editor, x, groundY, 1);
+                    platform(editor, x + beat * 2.f, groundY + 30.f, 3);
+                    if (orbs) orb(editor, x + beat * 2.5f, groundY + 100.f);
+                    break;
+                default:
+                    // Intentional musical rest for contrast.
+                    break;
             }
         }
+
         editor->m_editorUI->updateButtons();
         FLAlertLayer::create("DLGen",
-            fmt::format("Audio BPM detected: {:.1f}\nBeat phase analyzed automatically. Random spikes, blocks and orbs generated without triggers.", bpm),
+            fmt::format("BPM detected: {:.1f}\nGenerated varied beat-synced phrases with platforms, stairs, blocks, spikes and optional orbs. No artificial continuous floor or triggers.", bpm),
             "OK")->show();
     }
 };
