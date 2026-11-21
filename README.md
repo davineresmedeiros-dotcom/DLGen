@@ -6,24 +6,18 @@
 - Expected compiled mod file: `davinxs.DLGen.geode`
 - This project builds a Geode mod package (`.geode`), **not an APK**.
 
-DLGen keyword settings:
+## Choose layout options
 
-- **Difficulty:** easy, normal, hard, insane, demon
-- **Length:** medium, long, XL (XL target: 300 seconds / five minutes)
-- **Orbs:** active or inactive
-- **Triggers:** enabled or disabled
+Open DLGen's in-game Geode settings and choose each value from its available options. These are selections, not keyword text inputs:
 
-Example keyword input:
-
-```text
-demon XL orbs ativo triggers nao
-```
-
-The parser also accepts forms such as `orbs=active` and `triggers=no`.
+- **Difficulty:** Easy, Normal, Hard, Insane, Demon
+- **Time:** Medium, Long, XL (XL target: 300 seconds / five minutes)
+- **Orbs:** Active, Inactive
+- **Triggers:** Yes, No
 
 ## Project status
 
-The repository currently contains the Geode mod manifest, CMake setup, entry point, and keyword configuration/parser foundation. The next milestone is the in-game configuration UI and actual Geometry Dash editor object-generation logic.
+The repository contains the Geode manifest, CMake setup, entry point, and selectable in-game configuration options. The next milestone is connecting these choices to actual Geometry Dash editor object-generation logic.
 
 ## Build
 
