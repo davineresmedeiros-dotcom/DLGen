@@ -32,7 +32,7 @@ void spikes(LevelEditorLayer* editor, float x, float y, int count) {
 }
 void orb(LevelEditorLayer* editor, float x, float y) { put(editor, 35, x, y); }
 void block(LevelEditorLayer* editor, float x, float y) { put(editor, 1, x, y); }
-void platform(LevelEditorLayer* editor, float x, float y, int count) {
+void addPlatform(LevelEditorLayer* editor, float x, float y, int count) {
     for (int i = 0; i < count; ++i)
         block(editor, x + 30.f * static_cast<float>(i), y);
 }
@@ -130,32 +130,32 @@ class $modify(DLGenEditorUI, EditorUI) {
                     break;
                 // Short raised platforms with a beat-matched approach.
                 case 4:
-                    platform(editor, x + beat, elevatedY, n);
+                    addPlatform(editor, x + beat, elevatedY, n);
                     if (orbs) {
                         orb(editor, x + beat * 1.5f, elevatedY + 55.f);
                         orb(editor, x + beat * 2.5f, elevatedY + 55.f);
                     }
                     break;
                 case 5:
-                    platform(editor, x, groundY + 30.f, 3);
-                    platform(editor, x + beat * 2.f, groundY + 60.f, 3);
+                    addPlatform(editor, x, groundY + 30.f, 3);
+                    addPlatform(editor, x + beat * 2.f, groundY + 60.f, 3);
                     break;
                 // Staircase motifs: ascending or descending block groups.
                 case 6:
                     for (int i = 0; i < 3; ++i)
-                        platform(editor, x + beat * static_cast<float>(i),
+                        addPlatform(editor, x + beat * static_cast<float>(i),
                                  groundY + 30.f * static_cast<float>(i + 1), 2);
                     break;
                 case 7:
                     for (int i = 0; i < 3; ++i)
-                        platform(editor, x + beat * static_cast<float>(i),
+                        addPlatform(editor, x + beat * static_cast<float>(i),
                                  groundY + 60.f - 30.f * static_cast<float>(i), 2);
                     break;
                 // Floating block formations and orb arcs.
                 case 8:
-                    platform(editor, x + beat, elevatedY, 2);
-                    platform(editor, x + beat * 2.f, elevatedY + 30.f, 2);
-                    platform(editor, x + beat * 3.f, elevatedY, 2);
+                    addPlatform(editor, x + beat, elevatedY, 2);
+                    addPlatform(editor, x + beat * 2.f, elevatedY + 30.f, 2);
+                    addPlatform(editor, x + beat * 3.f, elevatedY, 2);
                     if (orbs) orb(editor, x + beat * 2.f, elevatedY + 90.f);
                     break;
                 case 9:
@@ -167,7 +167,7 @@ class $modify(DLGenEditorUI, EditorUI) {
                 // A mixed phrase ending in a safe rest.
                 case 10:
                     spikes(editor, x, groundY, 1);
-                    platform(editor, x + beat * 2.f, groundY + 30.f, 3);
+                    addPlatform(editor, x + beat * 2.f, groundY + 30.f, 3);
                     if (orbs) orb(editor, x + beat * 2.5f, groundY + 100.f);
                     break;
                 default:
