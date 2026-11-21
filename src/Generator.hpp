@@ -19,4 +19,5 @@ struct ParseResult {
 ParseResult parseKeywords(std::string_view keywords);
 std::string_view difficultyName(Difficulty difficulty);
 std::string_view lengthName(Length length);
+int targetDurationSeconds(Length length);
 } // namespace dlgen
