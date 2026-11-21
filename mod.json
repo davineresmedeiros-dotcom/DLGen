@@ -6,7 +6,10 @@
   "developer": "davinxs",
   "description": "Choose layout difficulty, time, orb state, and trigger state from in-game options.",
   "repository": "https://github.com/davineresmedeiros-dotcom/DLGen",
-  "tags": ["editor", "utility"],
+  "tags": [
+    "editor",
+    "utility"
+  ],
   "dependencies": {
     "geode": ">=4.0.0"
   },
@@ -19,25 +22,47 @@
       "type": "string",
       "name": "Difficulty",
       "default": "Normal",
-      "one-of": ["Easy", "Normal", "Hard", "Insane", "Demon"]
+      "one-of": [
+        "Easy",
+        "Normal",
+        "Hard",
+        "Insane",
+        "Demon"
+      ]
     },
     "time": {
       "type": "string",
       "name": "Time",
       "default": "Medium",
-      "one-of": ["Medium", "Long", "XL"]
+      "one-of": [
+        "Medium",
+        "Long",
+        "XL"
+      ]
     },
     "orbs": {
       "type": "string",
       "name": "Orbs",
       "default": "Active",
-      "one-of": ["Active", "Inactive"]
+      "one-of": [
+        "Active",
+        "Inactive"
+      ]
     },
     "triggers": {
       "type": "string",
       "name": "Triggers",
       "default": "Yes",
-      "one-of": ["Yes", "No"]
+      "one-of": [
+        "Yes",
+        "No"
+      ]
     }
+  },
+  "gd": {
+    "win": "*",
+    "mac": "*",
+    "android": "*",
+    "ios": "*"
   }
 }
