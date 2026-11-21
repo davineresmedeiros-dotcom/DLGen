@@ -1,6 +1,7 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/EditorUI.hpp>
 #include <random>
+#include <algorithm>
 
 using namespace geode::prelude;
 
@@ -19,6 +20,20 @@ int getOrbSpacing() {
     if (difficulty == "Insane") return 360;
     if (difficulty == "Demon") return 300;
     return 600; // Normal
+}
+
+GameObject* addGroupedObject(LevelEditorLayer* editor, int objectID, CCPoint position, int groupID) {
+    auto object = editor->createObject(objectID, position, false);
+    if (object) object->addGroup(groupID);
+    return object;
+}
+
+void addToggleTrigger(LevelEditorLayer* editor, float x, float y, int groupID, bool activate) {
+    auto object = editor->createObject(1049, CCPoint{x, y}, false);
+    if (!object) return;
+    auto trigger = static_cast<EffectGameObject*>(object);
+    trigger->m_targetGroupID = groupID;
+    trigger->m_activateGroup = activate;
 }
 
 int getDifficultyRank() {
@@ -97,14 +112,21 @@ class $modify(DLGenEditorUI, EditorUI) {
         // Repeating phrases keep the level readable; randomness only chooses
         // among patterns appropriate for the selected difficulty.
         constexpr float phraseLength = 960.f;
-        for (float phrase = startX + 360.f; phrase < endX - 360.f; phrase += phraseLength) {
+        int phraseIndex = 0;
+        for (float phrase = startX + 360.f; phrase < endX - 360.f; phrase += phraseLength, ++phraseIndex) {
+            const int groupID = phraseIndex + 1;
             const int roll = patternRoll(rng);
+            if (Mod::get()->getSettingValue<std::string>("triggers") == "Yes") {
+                // Turn this phrase group off, then back on before its obstacles.
+                addToggleTrigger(editor, phrase - 240.f, floorY, groupID, false);
+                addToggleTrigger(editor, phrase - 120.f, floorY, groupID, true);
+            }
             const float patternX = phrase + static_cast<float>(offsetRoll(rng));
 
             if (difficulty == 0) {
                 // Easy: usually one isolated spike, with frequent empty phrases.
                 if (roll < 65)
-                    editor->createObject(8, CCPoint{patternX, floorY}, false);
+                    addGroupedObject(editor, 8, CCPoint{patternX, floorY}, groupID);
             }
             else if (difficulty == 1) {
                 // Normal: isolated spike or two singles with a wide gap.
@@ -112,7 +134,7 @@ class $modify(DLGenEditorUI, EditorUI) {
                     editor->createObject(8, CCPoint{patternX, floorY}, false);
                 } else if (roll < 75) {
                     editor->createObject(8, CCPoint{patternX, floorY}, false);
-                    editor->createObject(8, CCPoint{patternX + 390.f, floorY}, false);
+                    addGroupedObject(editor, 8, CCPoint{patternX + 390.f, floorY}, groupID);
                 }
             }
             else if (difficulty == 2) {
@@ -121,10 +143,10 @@ class $modify(DLGenEditorUI, EditorUI) {
                     editor->createObject(8, CCPoint{patternX, floorY}, false);
                 } else if (roll < 65) {
                     editor->createObject(8, CCPoint{patternX, floorY}, false);
-                    editor->createObject(8, CCPoint{patternX + 30.f, floorY}, false);
+                    addGroupedObject(editor, 8, CCPoint{patternX + 30.f, floorY}, groupID);
                 } else if (roll < 85) {
                     editor->createObject(8, CCPoint{patternX, floorY}, false);
-                    editor->createObject(8, CCPoint{patternX + 420.f, floorY}, false);
+                    addGroupedObject(editor, 8, CCPoint{patternX + 420.f, floorY}, groupID);
                 }
             }
             else {
@@ -136,16 +158,21 @@ class $modify(DLGenEditorUI, EditorUI) {
                     editor->createObject(8, CCPoint{patternX + 30.f, floorY}, false);
                 } else if (roll < 82) {
                     editor->createObject(8, CCPoint{patternX, floorY}, false);
-                    editor->createObject(8, CCPoint{patternX + 480.f, floorY}, false);
+                    addGroupedObject(editor, 8, CCPoint{patternX + 480.f, floorY}, groupID);
                 }
             }
         }
 
         auto mod = Mod::get();
         if (mod->getSettingValue<std::string>("orbs") == "Active") {
+            const int phraseCount = std::max(1, phraseIndex);
             for (float x = startX + spacing; x < endX - 60.f; x += spacing) {
                 // Yellow orb (object ID 35), placed above the continuous floor.
-                editor->createObject(35, CCPoint{x, 180.f}, false);
+                const int groupID = std::clamp(
+                    1 + static_cast<int>((x - (startX + 360.f)) / phraseLength),
+                    1, phraseCount
+                );
+                addGroupedObject(editor, 35, CCPoint{x, 180.f}, groupID);
             }
         }
 
