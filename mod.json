@@ -1,10 +1,10 @@
 {
   "geode": "5.11.2",
   "version": "v1.0.0",
-  "id": "davinxs.DLGen",
+  "id": "davinxs.dlgen",
   "name": "DLGen",
   "developer": "davinxs",
-  "description": "Choose layout difficulty, time, orb state, and trigger state from in-game options.",
+  "description": "Generate randomized playable GD layouts.",
   "repository": "https://github.com/davineresmedeiros-dotcom/DLGen",
   "tags": [
     "editor",
@@ -62,7 +62,7 @@
   "gd": {
     "win": "*",
     "mac": "*",
-    "android": "*",
+    "android": "2.2081",
     "ios": "*"
   }
 }
