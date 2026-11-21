@@ -45,14 +45,6 @@
         "Active",
         "Inactive"
       ]
-    },
-    "bpm": {
-      "type": "int",
-      "name": "Song BPM",
-      "description": "Set this to the BPM of the song for beat-synced generation.",
-      "default": 120,
-      "min": 60,
-      "max": 240
     }
   },
   "gd": {
