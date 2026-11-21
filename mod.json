@@ -10,9 +10,6 @@
     "editor",
     "utility"
   ],
-  "dependencies": {
-    "geode": ">=5.11.2"
-  },
   "settings": {
     "generator-title": {
       "type": "title",
