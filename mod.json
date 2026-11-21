@@ -1,5 +1,5 @@
 {
-  "geode": "4.0.0",
+  "geode": "5.11.2",
   "version": "v1.0.0",
   "id": "davinxs.DLGen",
   "name": "DLGen",
@@ -11,7 +11,7 @@
     "utility"
   ],
   "dependencies": {
-    "geode": ">=4.0.0"
+    "geode": ">=5.11.2"
   },
   "settings": {
     "generator-title": {
