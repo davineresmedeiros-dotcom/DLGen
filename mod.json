@@ -4,10 +4,40 @@
   "id": "davinxs.DLGen",
   "name": "DLGen",
   "developer": "davinxs",
-  "description": "Generate Geometry Dash layouts from difficulty, length, orb, and trigger keywords.",
+  "description": "Choose layout difficulty, time, orb state, and trigger state from in-game options.",
   "repository": "https://github.com/davineresmedeiros-dotcom/DLGen",
   "tags": ["editor", "utility"],
   "dependencies": {
     "geode": ">=4.0.0"
+  },
+  "settings": {
+    "generator-title": {
+      "type": "title",
+      "name": "Layout Generator"
+    },
+    "difficulty": {
+      "type": "string",
+      "name": "Difficulty",
+      "default": "Normal",
+      "one-of": ["Easy", "Normal", "Hard", "Insane", "Demon"]
+    },
+    "time": {
+      "type": "string",
+      "name": "Time",
+      "default": "Medium",
+      "one-of": ["Medium", "Long", "XL"]
+    },
+    "orbs": {
+      "type": "string",
+      "name": "Orbs",
+      "default": "Active",
+      "one-of": ["Active", "Inactive"]
+    },
+    "triggers": {
+      "type": "string",
+      "name": "Triggers",
+      "default": "Yes",
+      "one-of": ["Yes", "No"]
+    }
   }
 }
