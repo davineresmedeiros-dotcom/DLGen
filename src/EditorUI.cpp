@@ -12,160 +12,115 @@ int getDurationSeconds() {
     if (time == "XL") return 300;
     return 60;
 }
-
-int getOrbSpacing() {
-    auto difficulty = Mod::get()->getSettingValue<std::string>("difficulty");
-    if (difficulty == "Easy") return 900;
-    if (difficulty == "Hard") return 450;
-    if (difficulty == "Insane") return 360;
-    if (difficulty == "Demon") return 300;
-    return 600;
-}
-
-GameObject* addGroupedObject(LevelEditorLayer* editor, int objectID, CCPoint position, int groupID) {
-    auto object = editor->createObject(objectID, position, false);
-    if (object) object->addToGroup(groupID);
-    return object;
-}
-
-void addToggleTrigger(LevelEditorLayer* editor, float x, float y, int groupID, bool activate) {
-    auto object = editor->createObject(1049, CCPoint{x, y}, false);
-    if (!object) return;
-    auto trigger = static_cast<EffectGameObject*>(object);
-    trigger->m_targetGroupID = groupID;
-    trigger->m_activateGroup = activate;
-}
-
 int getDifficultyRank() {
     auto difficulty = Mod::get()->getSettingValue<std::string>("difficulty");
     if (difficulty == "Easy") return 0;
-    if (difficulty == "Normal") return 1;
     if (difficulty == "Hard") return 2;
     if (difficulty == "Insane") return 3;
     if (difficulty == "Demon") return 4;
     return 1;
 }
+GameObject* addObject(LevelEditorLayer* editor, int objectID, float x, float y) {
+    return editor->createObject(objectID, CCPoint{x, y}, false);
 }
-
+void addSpikeRun(LevelEditorLayer* editor, float x, float y, int count) {
+    for (int i = 0; i < count; ++i)
+        addObject(editor, 8, x + 30.f * static_cast<float>(i), y);
+}
+void addOrb(LevelEditorLayer* editor, float x, float y) {
+    addObject(editor, 35, x, y);
+}
+}
 class $modify(DLGenEditorUI, EditorUI) {
     bool init(LevelEditorLayer* editorLayer) {
-        if (!EditorUI::init(editorLayer))
-            return false;
-
+        if (!EditorUI::init(editorLayer)) return false;
         auto menu = this->getChildByID("playback-menu");
         if (!menu) {
             log::warn("DLGen: playback menu not found.");
             return true;
         }
-
         auto settingsSprite = ButtonSprite::create("DLGen");
         settingsSprite->setScale(0.8f);
-        auto settingsButton = CCMenuItemSpriteExtra::create(
-            settingsSprite, this, menu_selector(DLGenEditorUI::onDLGenSettings));
+        auto settingsButton = CCMenuItemSpriteExtra::create(settingsSprite, this, menu_selector(DLGenEditorUI::onDLGenSettings));
         settingsButton->setID("dlgen-settings-button");
         menu->addChild(settingsButton);
         m_uiItems->addObject(settingsButton);
-
         auto generateSprite = ButtonSprite::create("Generate");
         generateSprite->setScale(0.8f);
-        auto generateButton = CCMenuItemSpriteExtra::create(
-            generateSprite, this, menu_selector(DLGenEditorUI::onDLGenGenerate));
+        auto generateButton = CCMenuItemSpriteExtra::create(generateSprite, this, menu_selector(DLGenEditorUI::onDLGenGenerate));
         generateButton->setID("dlgen-generate-button");
         menu->addChild(generateButton);
         m_uiItems->addObject(generateButton);
-
         menu->updateLayout();
         return true;
     }
-
-    void onDLGenSettings(CCObject*) {
-        geode::openSettingsPopup(Mod::get(), false);
-    }
-
+    void onDLGenSettings(CCObject*) { geode::openSettingsPopup(Mod::get(), false); }
     void onDLGenGenerate(CCObject*) {
         auto editor = m_editorLayer;
         if (!editor) {
             FLAlertLayer::create("DLGen", "Open a level in the editor first.", "OK")->show();
             return;
         }
-
-        constexpr float startX = 300.f;
-        constexpr float blockWidth = 30.f;
-        constexpr float floorY = 120.f;
+        constexpr float startX = 300.f, blockWidth = 30.f, floorY = 120.f;
+        constexpr float unitsPerSecond = 300.f;
         const int duration = getDurationSeconds();
-        const int spacing = getOrbSpacing();
         const int difficulty = getDifficultyRank();
-
-        const float endX = startX + static_cast<float>(duration) * 300.f;
-        for (float x = startX; x < endX; x += blockWidth) {
-            editor->createObject(1, CCPoint{x, floorY}, false);
-        }
+        int bpm = std::clamp(Mod::get()->getSettingValue<int>("bpm"), 60, 240);
+        const float beat = unitsPerSecond * 60.f / static_cast<float>(bpm);
+        const float bar = beat * 4.f;
+        const float endX = startX + static_cast<float>(duration) * unitsPerSecond;
+        for (float x = startX; x < endX; x += blockWidth)
+            addObject(editor, 1, x, floorY);
 
         std::random_device seed;
         std::mt19937 rng(seed());
-        std::uniform_int_distribution<int> patternRoll(0, 99);
-        std::uniform_int_distribution<int> offsetRoll(0, 120);
+        std::uniform_int_distribution<int> patternRoll(0, 7);
+        std::uniform_int_distribution<int> offsetRoll(0, 3);
+        std::uniform_int_distribution<int> variantRoll(0, 2);
+        const bool orbs = Mod::get()->getSettingValue<std::string>("orbs") == "Active";
 
-        constexpr float phraseLength = 960.f;
+        // A random phrase is selected every four beats, with its events quantized
+        // to the BPM grid. Higher difficulties select denser phrase families.
         int phraseIndex = 0;
-        for (float phrase = startX + 360.f; phrase < endX - 360.f; phrase += phraseLength, ++phraseIndex) {
-            const int groupID = phraseIndex + 1;
-            const int roll = patternRoll(rng);
-            if (Mod::get()->getSettingValue<std::string>("triggers") == "Yes") {
-                addToggleTrigger(editor, phrase - 240.f, floorY, groupID, false);
-                addToggleTrigger(editor, phrase - 120.f, floorY, groupID, true);
-            }
-            const float patternX = phrase + static_cast<float>(offsetRoll(rng));
-
+        for (float phraseX = startX + bar; phraseX < endX - bar; phraseX += bar, ++phraseIndex) {
+            const int pattern = patternRoll(rng);
+            const int variant = variantRoll(rng);
+            const float x = phraseX + beat * static_cast<float>(offsetRoll(rng));
             if (difficulty == 0) {
-                if (roll < 65) addGroupedObject(editor, 8, CCPoint{patternX, floorY}, groupID);
-            } else if (difficulty == 1) {
-                if (roll < 45) {
-                    editor->createObject(8, CCPoint{patternX, floorY}, false);
-                } else if (roll < 75) {
-                    editor->createObject(8, CCPoint{patternX, floorY}, false);
-                    addGroupedObject(editor, 8, CCPoint{patternX + 390.f, floorY}, groupID);
+                switch (pattern) {
+                    case 0: case 1: addSpikeRun(editor, x, floorY, 1); break;
+                    case 2: addSpikeRun(editor, x, floorY, 2); break;
+                    case 3: addSpikeRun(editor, x + beat, floorY, 1); break;
+                    case 4: if (orbs) addOrb(editor, x + beat, floorY + 60.f); break;
+                    default: break;
                 }
-            } else if (difficulty == 2) {
-                if (roll < 35) {
-                    editor->createObject(8, CCPoint{patternX, floorY}, false);
-                } else if (roll < 65) {
-                    editor->createObject(8, CCPoint{patternX, floorY}, false);
-                    addGroupedObject(editor, 8, CCPoint{patternX + 30.f, floorY}, groupID);
-                } else if (roll < 85) {
-                    editor->createObject(8, CCPoint{patternX, floorY}, false);
-                    addGroupedObject(editor, 8, CCPoint{patternX + 420.f, floorY}, groupID);
+            } else if (difficulty == 1) {
+                switch (pattern) {
+                    case 0: case 1: addSpikeRun(editor, x, floorY, 1); break;
+                    case 2: addSpikeRun(editor, x, floorY, 2); break;
+                    case 3: addSpikeRun(editor, x + beat, floorY, 2); break;
+                    case 4: addSpikeRun(editor, x, floorY, 1); addSpikeRun(editor, x + beat * 2.f, floorY, 1); break;
+                    case 5: if (orbs) addOrb(editor, x + beat, floorY + 60.f); break;
+                    default: break;
                 }
             } else {
-                if (roll < 25) {
-                    editor->createObject(8, CCPoint{patternX, floorY}, false);
-                } else if (roll < 60) {
-                    editor->createObject(8, CCPoint{patternX, floorY}, false);
-                    editor->createObject(8, CCPoint{patternX + 30.f, floorY}, false);
-                } else if (roll < 82) {
-                    editor->createObject(8, CCPoint{patternX, floorY}, false);
-                    addGroupedObject(editor, 8, CCPoint{patternX + 480.f, floorY}, groupID);
+                switch (pattern) {
+                    case 0: addSpikeRun(editor, x, floorY, 2); break;
+                    case 1: addSpikeRun(editor, x, floorY, 1 + variant); break;
+                    case 2: addSpikeRun(editor, x, floorY, 1); addSpikeRun(editor, x + beat * 2.f, floorY, 2); break;
+                    case 3: addSpikeRun(editor, x + beat, floorY, 2); break;
+                    case 4: addSpikeRun(editor, x, floorY, 1); addSpikeRun(editor, x + beat, floorY, 1); addSpikeRun(editor, x + beat * 2.f, floorY, 1); break;
+                    case 5: if (orbs) addOrb(editor, x + beat, floorY + 60.f); break;
+                    case 6: addSpikeRun(editor, x + beat, floorY, 1); addSpikeRun(editor, x + beat * 3.f, floorY, 1); break;
+                    default: break;
                 }
             }
+            if (orbs && difficulty >= 2 && pattern == 7 && variant == 0)
+                addOrb(editor, phraseX + beat * 3.f, floorY + 75.f);
         }
-
-        auto mod = Mod::get();
-        if (mod->getSettingValue<std::string>("orbs") == "Active") {
-            const int phraseCount = std::max(1, phraseIndex);
-            for (float x = startX + spacing; x < endX - 60.f; x += spacing) {
-                const int groupID = std::clamp(
-                    1 + static_cast<int>((x - (startX + 360.f)) / phraseLength),
-                    1, phraseCount
-                );
-                addGroupedObject(editor, 35, CCPoint{x, 180.f}, groupID);
-            }
-        }
-
         editor->m_editorUI->updateButtons();
-        FLAlertLayer::create(
-            "DLGen",
-            "Organized randomized layout generated: safe lead-ins, short obstacle patterns, and recovery gaps. Please playtest the result; gameplay timing is still being tuned.",
-            "OK"
-        )->show();
+        FLAlertLayer::create("DLGen",
+            "Random beat-grid layout generated. Set Song BPM to match the music for rhythm alignment. Patterns and obstacle density vary by difficulty; playtest the jumps and spacing.",
+            "OK")->show();
     }
 };
