@@ -1,5 +1,7 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/EditorUI.hpp>
+#include <Geode/binding/GJGameLevel.hpp>
+#include "BPMDetector.hpp"
 #include <random>
 #include <algorithm>
 
@@ -57,19 +59,40 @@ class $modify(DLGenEditorUI, EditorUI) {
     void onDLGenSettings(CCObject*) { geode::openSettingsPopup(Mod::get(), false); }
     void onDLGenGenerate(CCObject*) {
         auto editor = m_editorLayer;
-        if (!editor) {
-            FLAlertLayer::create("DLGen", "Open a level in the editor first.", "OK")->show();
+        if (!editor || !editor->m_level) {
+            FLAlertLayer::create("DLGen", "Open a level with a selected song in the editor first.", "OK")->show();
             return;
         }
+
+        // Resolve and analyze the actual song file selected by this level.
+        auto audioFile = editor->m_level->getAudioFileName();
+        if (audioFile.empty()) {
+            FLAlertLayer::create("DLGen", "Could not find the selected song file. Select/download a song and try again.", "OK")->show();
+            return;
+        }
+        auto resolvedFile = CCFileUtils::get()->fullPathForFilename(audioFile.c_str());
+        std::filesystem::path audioPath(resolvedFile.empty() ? audioFile.c_str() : resolvedFile.c_str());
+        auto detected = detectSongBPM(audioPath);
+        if (!detected) {
+            FLAlertLayer::create("DLGen", fmt::format("Could not analyze this song's audio.\n{}", detected.unwrapErr()), "OK")->show();
+            return;
+        }
+        const auto timing = detected.unwrap();
+        const float bpm = static_cast<float>(timing.bpm);
+        if (bpm < 70.f || bpm > 220.f || timing.confidence < 1.03) {
+            FLAlertLayer::create("DLGen", fmt::format("BPM detection was uncertain ({:.1f} BPM). Try a clearer song file.", bpm), "OK")->show();
+            return;
+        }
+
         constexpr float startX = 300.f, floorY = 120.f, blockWidth = 30.f;
         constexpr float unitsPerSecond = 300.f;
         const int duration = getDurationSeconds();
         const int difficulty = getDifficultyRank();
-        const int bpm = std::clamp(Mod::get()->getSettingValue<int>("bpm"), 60, 240);
-        const float beat = unitsPerSecond * 60.f / static_cast<float>(bpm);
+        const float beat = unitsPerSecond * 60.f / bpm;
         const float bar = beat * 4.f;
+        const float songPhaseX = startX + static_cast<float>(timing.firstBeatSeconds) * unitsPerSecond;
         const float endX = startX + static_cast<float>(duration) * unitsPerSecond;
-        // Continuous solid ground. Generated obstacles stay above this line.
+
         for (float x = startX; x < endX; x += blockWidth)
             block(editor, x, floorY);
 
@@ -77,14 +100,11 @@ class $modify(DLGenEditorUI, EditorUI) {
         std::mt19937 rng(seed());
         std::uniform_int_distribution<int> motif(0, 9), offset(0, 2), size(1, 3);
         const bool orbs = Mod::get()->getSettingValue<std::string>("orbs") == "Active";
-        const float safeGap = difficulty == 0 ? beat * 3.0f : difficulty == 1 ? beat * 2.5f : beat * 2.0f;
 
-        // Randomly choose a motif every musical bar. Each event snaps to the
-        // beat/sub-beat grid, while a recovery gap prevents continuous hazards.
-        for (float barX = startX + bar; barX < endX - bar; barX += bar) {
+        // Phrases start on the detected beat phase, not a manually entered BPM.
+        for (float barX = songPhaseX + bar; barX < endX - bar; barX += bar) {
             const int chosen = motif(rng);
-            const int shift = offset(rng);
-            const float x = barX + beat * static_cast<float>(shift);
+            const float x = barX + beat * static_cast<float>(offset(rng));
             const int count = size(rng);
             switch (chosen) {
                 case 0: case 1: spikes(editor, x, floorY, 1); break;
@@ -99,7 +119,6 @@ class $modify(DLGenEditorUI, EditorUI) {
                     spikes(editor, x + beat * 2.f, floorY, 1);
                     break;
                 case 6:
-                    // Single raised block obstacle with a clear approach/exit.
                     block(editor, x + beat, floorY + 30.f);
                     if (orbs) orb(editor, x + beat, floorY + 95.f);
                     break;
@@ -111,14 +130,12 @@ class $modify(DLGenEditorUI, EditorUI) {
                     block(editor, x, floorY + 30.f);
                     block(editor, x + beat, floorY + 30.f);
                     break;
-                default: break; // intentional musical rest
+                default: break;
             }
-            // Keep the next bar's start clear for recovery on lower difficulties.
-            (void)safeGap;
         }
         editor->m_editorUI->updateButtons();
         FLAlertLayer::create("DLGen",
-            "Random beat-grid layout generated without triggers. BPM is currently set from the Song BPM option; automatic audio analysis is not enabled yet. Playtest obstacle clearance and timing.",
+            fmt::format("Audio BPM detected: {:.1f}\nBeat phase analyzed automatically. Random spikes, blocks and orbs generated without triggers.", bpm),
             "OK")->show();
     }
 };
