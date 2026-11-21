@@ -70,7 +70,7 @@ class $modify(DLGenEditorUI, EditorUI) {
             FLAlertLayer::create("DLGen", "Could not find the selected song file. Select/download a song and try again.", "OK")->show();
             return;
         }
-        auto resolvedFile = CCFileUtils::get()->fullPathForFilename(audioFile.c_str());
+        auto resolvedFile = CCFileUtils::get()->fullPathForFilename(audioFile.c_str(), false);
         std::filesystem::path audioPath(resolvedFile.empty() ? audioFile.c_str() : resolvedFile.c_str());
         auto detected = detectSongBPM(audioPath);
         if (!detected) {
