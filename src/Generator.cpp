@@ -3,6 +3,7 @@
 #include <cctype>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace dlgen {
 namespace {
@@ -29,9 +30,12 @@ bool parseBool(std::string const& value, bool& output) {
 ParseResult parseKeywords(std::string_view keywords) {
     ParseResult result;
     std::istringstream stream{std::string(keywords)};
+    std::vector<std::string> tokens;
     std::string token;
-    while (stream >> token) {
-        token = normalize(token);
+    while (stream >> token) tokens.push_back(normalize(token));
+
+    for (std::size_t i = 0; i < tokens.size(); ++i) {
+        token = tokens[i];
         if (token == "easy") result.settings.difficulty = Difficulty::Easy;
         else if (token == "normal") result.settings.difficulty = Difficulty::Normal;
         else if (token == "hard") result.settings.difficulty = Difficulty::Hard;
@@ -40,22 +44,43 @@ ParseResult parseKeywords(std::string_view keywords) {
         else if (token == "medium" || token == "médium") result.settings.length = Length::Medium;
         else if (token == "long") result.settings.length = Length::Long;
         else if (token == "xl") result.settings.length = Length::XL;
-        else if (token.starts_with("orbs=")) {
-            if (!parseBool(token.substr(5), result.settings.orbs)) {
-                result.valid = false; result.error = "Valor inválido para orbs: " + token.substr(5); return result;
+        else if (token == "orbs" || token == "triggers") {
+            bool isOrb = token == "orbs";
+            if (++i >= tokens.size()) {
+                result.valid = false;
+                result.error = "Falta o valor para " + token;
+                return result;
             }
+            bool value = false;
+            if (!parseBool(tokens[i], value)) {
+                result.valid = false;
+                result.error = "Valor inválido para " + token + ": " + tokens[i];
+                return result;
+            }
+            if (isOrb) result.settings.orbs = value;
+            else result.settings.triggers = value;
         }
-        else if (token.starts_with("triggers=")) {
-            if (!parseBool(token.substr(9), result.settings.triggers)) {
-                result.valid = false; result.error = "Valor inválido para triggers: " + token.substr(9); return result;
+        else if (token.starts_with("orbs=") || token.starts_with("triggers=")) {
+            bool isOrb = token.starts_with("orbs=");
+            bool value = false;
+            auto equal = token.find('=');
+            if (!parseBool(token.substr(equal + 1), value)) {
+                result.valid = false;
+                result.error = "Valor inválido: " + token;
+                return result;
             }
+            if (isOrb) result.settings.orbs = value;
+            else result.settings.triggers = value;
         }
         else {
-            result.valid = false; result.error = "Palavra-chave desconhecida: " + token; return result;
+            result.valid = false;
+            result.error = "Palavra-chave desconhecida: " + token;
+            return result;
         }
     }
     return result;
 }
+
 std::string_view difficultyName(Difficulty difficulty) {
     switch (difficulty) {
         case Difficulty::Easy: return "easy";
@@ -73,5 +98,13 @@ std::string_view lengthName(Length length) {
         case Length::XL: return "XL";
     }
     return "medium";
+}
+int targetDurationSeconds(Length length) {
+    switch (length) {
+        case Length::Medium: return 60;
+        case Length::Long: return 120;
+        case Length::XL: return 300;
+    }
+    return 60;
 }
 } // namespace dlgen
