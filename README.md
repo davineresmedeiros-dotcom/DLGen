@@ -2,28 +2,33 @@
 
 **DLGen** is a Geometry Dash layout generator mod for [Geode](https://geode-sdk.org/).
 
-- Geode mod ID: `davinxs.DLGen`
-- Expected compiled mod file: `davinxs.DLGen.geode`
-- This project builds a Geode mod package (`.geode`), **not an APK**.
+- Mod ID: `davinxs.DLGen`
+- Intended game: Geometry Dash **2.2081**
+- Intended loader: Geode **5.11.2**
+- Expected package: `davinxs.DLGen.geode` (not an APK)
 
-## In-editor interface
+## In-editor controls
 
-DLGen adds a **DLGen** shortcut button to the level editor's playback menu. Press it to open the mod's Geode settings, where each layout option is selected from a list.
+The editor playback menu has two buttons:
 
+- **DLGen** opens the mod settings with selectable options.
+- **Generate** creates a safe starter layout in the open level.
+
+Options:
 - **Difficulty:** Easy, Normal, Hard, Insane, Demon
-- **Time:** Medium, Long, XL (XL target: 300 seconds / five minutes)
+- **Time:** Medium (60 s), Long (120 s), XL (300 s / five minutes)
 - **Orbs:** Active, Inactive
 - **Triggers:** Yes, No
 
-These are selectable options, not keyword text inputs.
+## Playability-first generation
 
-## Project status
+The current starter generator lays a continuous solid floor and, when Orbs is Active, places optional yellow orbs above it. It deliberately does not place spikes or forced-jump hazards, so this first generated route avoids impossible obstacle patterns.
 
-The initial editor shortcut and selectable settings are committed. The next milestone is a dedicated generator panel and connecting the selected options to actual Geometry Dash editor object-generation logic.
+Difficulty currently changes the spacing of optional orbs. The Triggers selection is present in settings but is not yet connected to trigger placement. Advanced obstacle patterns and gameplay verification are still in development.
 
 ## Build
 
-Configure and build using the Geode SDK. The output must be the Geode package named `davinxs.DLGen.geode`.
+Configure and build with a compatible Geode SDK for the intended game version. The output must be the Geode package `davinxs.DLGen.geode`.
 
 ```sh
 cmake -B build -DGEODE_SDK=/path/to/geode-sdk
