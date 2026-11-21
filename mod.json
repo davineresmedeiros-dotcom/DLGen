@@ -1,0 +1,11 @@
+{
+  "geode": "4.0.0",
+  "version": "v1.0.0",
+  "id": "dlgen",
+  "name": "DLGen",
+  "developer": "davineresmedeiros-dotcom",
+  "description": "Generate Geometry Dash layouts from difficulty, length, orb, and trigger keywords.",
+  "repository": "https://github.com/davineresmedeiros-dotcom/DLGen",
+  "tags": ["editor", "utility"],
+  "dependencies": { "geode": ">=4.0.0" }
+}
