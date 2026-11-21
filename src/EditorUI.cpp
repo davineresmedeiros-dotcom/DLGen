@@ -20,17 +20,17 @@ int getDifficultyRank() {
     if (difficulty == "Demon") return 4;
     return 1;
 }
-GameObject* addObject(LevelEditorLayer* editor, int objectID, float x, float y) {
-    return editor->createObject(objectID, CCPoint{x, y}, false);
+GameObject* put(LevelEditorLayer* editor, int id, float x, float y) {
+    return editor->createObject(id, CCPoint{x, y}, false);
 }
-void addSpikeRun(LevelEditorLayer* editor, float x, float y, int count) {
+void spikes(LevelEditorLayer* editor, float x, float y, int count) {
     for (int i = 0; i < count; ++i)
-        addObject(editor, 8, x + 30.f * static_cast<float>(i), y);
+        put(editor, 8, x + 30.f * static_cast<float>(i), y);
 }
-void addOrb(LevelEditorLayer* editor, float x, float y) {
-    addObject(editor, 35, x, y);
+void orb(LevelEditorLayer* editor, float x, float y) { put(editor, 35, x, y); }
+void block(LevelEditorLayer* editor, float x, float y) { put(editor, 1, x, y); }
 }
-}
+
 class $modify(DLGenEditorUI, EditorUI) {
     bool init(LevelEditorLayer* editorLayer) {
         if (!EditorUI::init(editorLayer)) return false;
@@ -61,66 +61,64 @@ class $modify(DLGenEditorUI, EditorUI) {
             FLAlertLayer::create("DLGen", "Open a level in the editor first.", "OK")->show();
             return;
         }
-        constexpr float startX = 300.f, blockWidth = 30.f, floorY = 120.f;
+        constexpr float startX = 300.f, floorY = 120.f, blockWidth = 30.f;
         constexpr float unitsPerSecond = 300.f;
         const int duration = getDurationSeconds();
         const int difficulty = getDifficultyRank();
-        int bpm = std::clamp(Mod::get()->getSettingValue<int>("bpm"), 60, 240);
+        const int bpm = std::clamp(Mod::get()->getSettingValue<int>("bpm"), 60, 240);
         const float beat = unitsPerSecond * 60.f / static_cast<float>(bpm);
         const float bar = beat * 4.f;
         const float endX = startX + static_cast<float>(duration) * unitsPerSecond;
+        // Continuous solid ground. Generated obstacles stay above this line.
         for (float x = startX; x < endX; x += blockWidth)
-            addObject(editor, 1, x, floorY);
+            block(editor, x, floorY);
 
         std::random_device seed;
         std::mt19937 rng(seed());
-        std::uniform_int_distribution<int> patternRoll(0, 7);
-        std::uniform_int_distribution<int> offsetRoll(0, 3);
-        std::uniform_int_distribution<int> variantRoll(0, 2);
+        std::uniform_int_distribution<int> motif(0, 9), offset(0, 2), size(1, 3);
         const bool orbs = Mod::get()->getSettingValue<std::string>("orbs") == "Active";
+        const float safeGap = difficulty == 0 ? beat * 3.0f : difficulty == 1 ? beat * 2.5f : beat * 2.0f;
 
-        // A random phrase is selected every four beats, with its events quantized
-        // to the BPM grid. Higher difficulties select denser phrase families.
-        int phraseIndex = 0;
-        for (float phraseX = startX + bar; phraseX < endX - bar; phraseX += bar, ++phraseIndex) {
-            const int pattern = patternRoll(rng);
-            const int variant = variantRoll(rng);
-            const float x = phraseX + beat * static_cast<float>(offsetRoll(rng));
-            if (difficulty == 0) {
-                switch (pattern) {
-                    case 0: case 1: addSpikeRun(editor, x, floorY, 1); break;
-                    case 2: addSpikeRun(editor, x, floorY, 2); break;
-                    case 3: addSpikeRun(editor, x + beat, floorY, 1); break;
-                    case 4: if (orbs) addOrb(editor, x + beat, floorY + 60.f); break;
-                    default: break;
-                }
-            } else if (difficulty == 1) {
-                switch (pattern) {
-                    case 0: case 1: addSpikeRun(editor, x, floorY, 1); break;
-                    case 2: addSpikeRun(editor, x, floorY, 2); break;
-                    case 3: addSpikeRun(editor, x + beat, floorY, 2); break;
-                    case 4: addSpikeRun(editor, x, floorY, 1); addSpikeRun(editor, x + beat * 2.f, floorY, 1); break;
-                    case 5: if (orbs) addOrb(editor, x + beat, floorY + 60.f); break;
-                    default: break;
-                }
-            } else {
-                switch (pattern) {
-                    case 0: addSpikeRun(editor, x, floorY, 2); break;
-                    case 1: addSpikeRun(editor, x, floorY, 1 + variant); break;
-                    case 2: addSpikeRun(editor, x, floorY, 1); addSpikeRun(editor, x + beat * 2.f, floorY, 2); break;
-                    case 3: addSpikeRun(editor, x + beat, floorY, 2); break;
-                    case 4: addSpikeRun(editor, x, floorY, 1); addSpikeRun(editor, x + beat, floorY, 1); addSpikeRun(editor, x + beat * 2.f, floorY, 1); break;
-                    case 5: if (orbs) addOrb(editor, x + beat, floorY + 60.f); break;
-                    case 6: addSpikeRun(editor, x + beat, floorY, 1); addSpikeRun(editor, x + beat * 3.f, floorY, 1); break;
-                    default: break;
-                }
+        // Randomly choose a motif every musical bar. Each event snaps to the
+        // beat/sub-beat grid, while a recovery gap prevents continuous hazards.
+        for (float barX = startX + bar; barX < endX - bar; barX += bar) {
+            const int chosen = motif(rng);
+            const int shift = offset(rng);
+            const float x = barX + beat * static_cast<float>(shift);
+            const int count = size(rng);
+            switch (chosen) {
+                case 0: case 1: spikes(editor, x, floorY, 1); break;
+                case 2: spikes(editor, x, floorY, 2); break;
+                case 3: spikes(editor, x, floorY, count); break;
+                case 4:
+                    spikes(editor, x, floorY, 1);
+                    if (orbs) orb(editor, x + beat, floorY + 65.f);
+                    break;
+                case 5:
+                    spikes(editor, x, floorY, 1);
+                    spikes(editor, x + beat * 2.f, floorY, 1);
+                    break;
+                case 6:
+                    // Single raised block obstacle with a clear approach/exit.
+                    block(editor, x + beat, floorY + 30.f);
+                    if (orbs) orb(editor, x + beat, floorY + 95.f);
+                    break;
+                case 7:
+                    spikes(editor, x + beat, floorY, 2);
+                    if (orbs) orb(editor, x + beat * 2.f, floorY + 65.f);
+                    break;
+                case 8:
+                    block(editor, x, floorY + 30.f);
+                    block(editor, x + beat, floorY + 30.f);
+                    break;
+                default: break; // intentional musical rest
             }
-            if (orbs && difficulty >= 2 && pattern == 7 && variant == 0)
-                addOrb(editor, phraseX + beat * 3.f, floorY + 75.f);
+            // Keep the next bar's start clear for recovery on lower difficulties.
+            (void)safeGap;
         }
         editor->m_editorUI->updateButtons();
         FLAlertLayer::create("DLGen",
-            "Random beat-grid layout generated. Set Song BPM to match the music for rhythm alignment. Patterns and obstacle density vary by difficulty; playtest the jumps and spacing.",
+            "Random beat-grid layout generated without triggers. BPM is currently set from the Song BPM option; automatic audio analysis is not enabled yet. Playtest obstacle clearance and timing.",
             "OK")->show();
     }
 };
