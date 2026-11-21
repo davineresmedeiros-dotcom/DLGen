@@ -6,18 +6,20 @@
 - Expected compiled mod file: `davinxs.DLGen.geode`
 - This project builds a Geode mod package (`.geode`), **not an APK**.
 
-## Choose layout options
+## In-editor interface
 
-Open DLGen's in-game Geode settings and choose each value from its available options. These are selections, not keyword text inputs:
+DLGen adds a **DLGen** shortcut button to the level editor's playback menu. Press it to open the mod's Geode settings, where each layout option is selected from a list.
 
 - **Difficulty:** Easy, Normal, Hard, Insane, Demon
 - **Time:** Medium, Long, XL (XL target: 300 seconds / five minutes)
 - **Orbs:** Active, Inactive
 - **Triggers:** Yes, No
 
+These are selectable options, not keyword text inputs.
+
 ## Project status
 
-The repository contains the Geode manifest, CMake setup, entry point, and selectable in-game configuration options. The next milestone is connecting these choices to actual Geometry Dash editor object-generation logic.
+The initial editor shortcut and selectable settings are committed. The next milestone is a dedicated generator panel and connecting the selected options to actual Geometry Dash editor object-generation logic.
 
 ## Build
 
