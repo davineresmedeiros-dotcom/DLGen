@@ -46,15 +46,6 @@
         "Inactive"
       ]
     },
-    "triggers": {
-      "type": "string",
-      "name": "Triggers",
-      "default": "Yes",
-      "one-of": [
-        "Yes",
-        "No"
-      ]
-    },
     "bpm": {
       "type": "int",
       "name": "Song BPM",
